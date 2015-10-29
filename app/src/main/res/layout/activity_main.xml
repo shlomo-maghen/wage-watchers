@@ -26,7 +26,7 @@
         android:layout_height="wrap_content"
         android:layout_below="@id/et_hourly_rate"
         android:text="@string/start"
-        android:onClick="validateFields"/>
+        android:onClick="startStopClock"/>
 
     <TextView
         android:id="@+id/money_clock"

@@ -35,8 +35,6 @@ public class MainActivity extends Activity {
         mStartStop = (Button)findViewById(R.id.bt_start);
         clockThread = new Thread(new ClockRun());
         prefs = getSharedPreferences("com.itnstudios.mainPrefs", MODE_PRIVATE);
-        prefsEditor = prefs.edit();
-
 
         handler = new Handler(){
             @Override
@@ -50,38 +48,41 @@ public class MainActivity extends Activity {
         clockThread.start();
     }
 
-    public void validateFields(View view){
+    public void startStopClock(View v) {
+        if(clockRun){
+            //stop clock
+            clockRun = false;
+            mStartStop.setText("Start");
+        }else if (!clockRun){
+            if (validateFields()){
+                hourlyRate = Double.parseDouble(mHourlyRate.getText().toString());
+                //start clock
+                clockRun = true;
+                mStartStop.setText("Stop");
+                timeClockStarted = System.currentTimeMillis();
+            }
+        }
+    }
+
+    private boolean validateFields(){
         String jobTitle = mJobTitle.getText().toString();
         if(jobTitle.equalsIgnoreCase("")){
             Notify.viaToast(this, "Please enter a job title");
         }else {
             try{
                 Double.parseDouble(mHourlyRate.getText().toString());
-                startStopClock();
+                return true;
             }catch (Exception e){
                 Notify.viaToast(this, "Please enter an hourly rate");
-
             }
         }
-
-    }
-    private void startStopClock() {
-        if(clockRun){
-            //stop clock
-            clockRun = false;
-            mStartStop.setText("Start");
-        }else if (!clockRun){
-            hourlyRate = Double.parseDouble(mHourlyRate.getText().toString());
-            //start clock
-            clockRun = true;
-            mStartStop.setText("Stop");
-            timeClockStarted = System.currentTimeMillis();
-        }
+        return false;
     }
 
     @Override
     protected void onPause() {
         super.onPause();
+        prefsEditor = prefs.edit();
         prefsEditor.putString("jobTitle", mJobTitle.getText().toString());
         prefsEditor.putString("hourlyRate", mHourlyRate.getText().toString());
         prefsEditor.commit();
@@ -127,22 +128,13 @@ public class MainActivity extends Activity {
 
         @Override
         public void run() {
-
-//            double elapsedTime = System.currentTimeMillis() - timeClockStarted;
             do {
                 while(clockRun){
-//                    double amountPerMs = hourlyRate / 360000;
-//                    Bundle clockData = new Bundle();
-//                    clockData.putString("value", String.format("$%.2f", amount));
-
                     Message message = Message.obtain();
-//                    message.setData(clockData);
-
-
                     handler.sendMessage(message);
 
                     try {
-                        Thread.sleep(10);
+                        Thread.sleep(100);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
