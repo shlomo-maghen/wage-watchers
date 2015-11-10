@@ -16,6 +16,9 @@ import android.widget.EditText;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.AdView;
+
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -39,10 +42,7 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-//        mainLayout = (RelativeLayout)findViewById(R.id.main_layout);
-//        mainLayout.requestFocus();
         mJobTitle = (EditText)findViewById(R.id.et_job_title);
-//        mJobTitle.clearFocus();
         mHourlyRate = (EditText)findViewById(R.id.et_hourly_rate);
         mMoneyClock = (TextView)findViewById(R.id.money_clock);
         mWorkLog = (TextView) findViewById(R.id.tv_log);
@@ -68,10 +68,14 @@ public class MainActivity extends Activity {
 
         String workLog = prefs.getString("workLog", "");
         mWorkLog.setText(workLog);
+        if(mJobTitle.getText().toString().equalsIgnoreCase(""))mJobTitle.requestFocus();
+
+        AdView mAdView = (AdView) findViewById(R.id.adView);
+        AdRequest adRequest = new AdRequest.Builder().build();
+        mAdView.loadAd(adRequest);
     }
 
     public void startStopClock(View v) {
-        Notify.viaToast(this, "startstop");
         if(clockRun){
             //stop clock
             long timeWorked = System.currentTimeMillis() - timeClockStarted;
@@ -141,7 +145,6 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onStop() {
-        Notify.viaToast(this, "oncreate");
         super.onStop();
         prefsEditor = prefs.edit();
         prefsEditor.putString("jobTitle", mJobTitle.getText().toString());
@@ -157,6 +160,8 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
+        if(clockRun){
+
         AlertDialog dialog = new AlertDialog.Builder(this).setTitle("Are you sure?")
                 .setMessage("Exiting the app will stop the clock.")
                 .setPositiveButton("Confirm", new DialogInterface.OnClickListener() {
@@ -167,6 +172,9 @@ public class MainActivity extends Activity {
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
+        }else {
+            finish();
+        }
     }
 
     @Override
