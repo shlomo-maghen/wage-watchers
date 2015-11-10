@@ -1,41 +1,54 @@
 package com.itnstudios.wagewatchers;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 public class MainActivity extends Activity {
-    EditText mJobTitle, mHourlyRate;
-    TextView mMoneyClock;
+    boolean clockRun = false, mainRun = true;
     Button mStartStop;
     double hourlyRate;
+    EditText mJobTitle, mHourlyRate;
     Handler handler;
-    Thread clockThread;
-    boolean clockRun = false, mainRun = true;
-    SharedPreferences prefs;
-    SharedPreferences.Editor prefsEditor;
     long timeClockStarted;
+    MainActivity activity = this;
+    RelativeLayout mainLayout;
+    SharedPreferences.Editor prefsEditor;
+    SharedPreferences prefs;
+    TextView mMoneyClock, mWorkLog;
+    Thread clockThread;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+//        mainLayout = (RelativeLayout)findViewById(R.id.main_layout);
+//        mainLayout.requestFocus();
         mJobTitle = (EditText)findViewById(R.id.et_job_title);
+//        mJobTitle.clearFocus();
         mHourlyRate = (EditText)findViewById(R.id.et_hourly_rate);
         mMoneyClock = (TextView)findViewById(R.id.money_clock);
+        mWorkLog = (TextView) findViewById(R.id.tv_log);
         mStartStop = (Button)findViewById(R.id.bt_start);
         clockThread = new Thread(new ClockRun());
         prefs = getSharedPreferences("com.itnstudios.mainPrefs", MODE_PRIVATE);
-
         handler = new Handler(){
             @Override
             public void handleMessage(Message msg) {
@@ -46,15 +59,34 @@ public class MainActivity extends Activity {
             }
         };
         clockThread.start();
+
+        String jobTitle = prefs.getString("jobTitle", "");
+        mJobTitle.setText(jobTitle);
+
+        String hourlyRate = prefs.getString("hourlyRate", "");
+        mHourlyRate.setText(hourlyRate);
+
+        String workLog = prefs.getString("workLog", "");
+        mWorkLog.setText(workLog);
     }
 
     public void startStopClock(View v) {
+        Notify.viaToast(this, "startstop");
         if(clockRun){
             //stop clock
+            long timeWorked = System.currentTimeMillis() - timeClockStarted;
             clockRun = false;
+
             mStartStop.setText("Start");
+
+            String realMoneyEarned = String.format("$%.2f", hourlyRate/3600000*timeWorked);
+            mMoneyClock.setText(realMoneyEarned);
+
+            String workRecord = getWorkRecord(timeWorked, realMoneyEarned);
+            mWorkLog.setText(workRecord);
+
         }else if (!clockRun){
-            if (validateFields()){
+            if (fieldsOk()){
                 hourlyRate = Double.parseDouble(mHourlyRate.getText().toString());
                 //start clock
                 clockRun = true;
@@ -64,7 +96,35 @@ public class MainActivity extends Activity {
         }
     }
 
-    private boolean validateFields(){
+    private String getWorkRecord(long timeWorked, String realMoneyEarned) {
+        StringBuilder builder = new StringBuilder();
+        //append date MM/DD/YY
+        Date today = new Date(System.currentTimeMillis());
+        DateFormat dateFormat = new SimpleDateFormat("MM/dd/yy");
+        String date = dateFormat.format(today);
+        builder.append(date);
+        builder.append("\n");
+        //append job title
+        builder.append(mJobTitle.getText() +"//");
+        //append time worked
+        long seconds = timeWorked / 1000 % 60;
+        long minutes = timeWorked / 60000 % 60;
+        long hours = timeWorked / 360000 % 24;
+        String time = String.format("%02d:%02d:%02d", hours, minutes, seconds);
+        builder.append(time+ "//");
+        //append amount earned
+        builder.append(realMoneyEarned + "\n");
+
+        String prefsLog = prefs.getString("workLog", "");
+        builder.append(prefsLog);
+        prefsEditor = prefs.edit();
+        prefsEditor.putString("workLog", builder.toString());
+        prefsEditor.commit();
+
+        return builder.toString();
+    }
+
+    private boolean fieldsOk(){
         String jobTitle = mJobTitle.getText().toString();
         if(jobTitle.equalsIgnoreCase("")){
             Notify.viaToast(this, "Please enter a job title");
@@ -80,23 +140,33 @@ public class MainActivity extends Activity {
     }
 
     @Override
-    protected void onPause() {
-        super.onPause();
+    protected void onStop() {
+        Notify.viaToast(this, "oncreate");
+        super.onStop();
         prefsEditor = prefs.edit();
         prefsEditor.putString("jobTitle", mJobTitle.getText().toString());
         prefsEditor.putString("hourlyRate", mHourlyRate.getText().toString());
         prefsEditor.commit();
-        mainRun = false;
-
     }
 
     @Override
-    protected void onResume() {
-        super.onResume();
-        String jobTitle = prefs.getString("jobTitle", "");
-        String hourlyRate = prefs.getString("hourlyRate", "");
-        mJobTitle.setText(jobTitle);
-        mHourlyRate.setText(hourlyRate);
+    protected void onDestroy() {
+        super.onDestroy();
+        startStopClock(null);
+    }
+
+    @Override
+    public void onBackPressed() {
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("Are you sure?")
+                .setMessage("Exiting the app will stop the clock.")
+                .setPositiveButton("Confirm", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        activity.finish();
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     @Override
@@ -134,7 +204,7 @@ public class MainActivity extends Activity {
                     handler.sendMessage(message);
 
                     try {
-                        Thread.sleep(100);
+                        Thread.sleep(50);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
