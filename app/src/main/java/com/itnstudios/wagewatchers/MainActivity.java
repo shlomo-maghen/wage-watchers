@@ -2,6 +2,7 @@ package com.itnstudios.wagewatchers;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -11,6 +12,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.RelativeLayout;
@@ -75,12 +77,30 @@ public class MainActivity extends Activity {
         mAdView.loadAd(adRequest);
     }
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+        prefsEditor = prefs.edit();
+        prefsEditor.putString("jobTitle", mJobTitle.getText().toString());
+        prefsEditor.putString("hourlyRate", mHourlyRate.getText().toString());
+
+        if(clockRun)prefsEditor.putLong("timeClockStarted", timeClockStarted);
+        else prefsEditor.remove("timeClockStarted");
+        prefsEditor.commit();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (prefs.getLong("timeClockStarted", 0) > 0) startStopClock(null);
+    }
+
     public void startStopClock(View v) {
         if(clockRun){
             //stop clock
+            //get total time worked
             long timeWorked = System.currentTimeMillis() - timeClockStarted;
             clockRun = false;
-
             mStartStop.setText("Start");
 
             String realMoneyEarned = String.format("$%.2f", hourlyRate/3600000*timeWorked);
@@ -89,13 +109,22 @@ public class MainActivity extends Activity {
             String workRecord = getWorkRecord(timeWorked, realMoneyEarned);
             mWorkLog.setText(workRecord);
 
+            //reset the clock
+            prefsEditor = prefs.edit();
+            prefsEditor.remove("timeClockStarted");
+            prefsEditor.commit();
+            mMoneyClock.setText("$0.00");
+
         }else if (!clockRun){
             if (fieldsOk()){
                 hourlyRate = Double.parseDouble(mHourlyRate.getText().toString());
                 //start clock
                 clockRun = true;
+                timeClockStarted = prefs.getLong("timeClockStarted", System.currentTimeMillis());
                 mStartStop.setText("Stop");
-                timeClockStarted = System.currentTimeMillis();
+                //hide keyboard
+                InputMethodManager manager = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+                manager.hideSoftInputFromWindow(v.getWindowToken(), 0);
             }
         }
     }
@@ -141,40 +170,6 @@ public class MainActivity extends Activity {
             }
         }
         return false;
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        prefsEditor = prefs.edit();
-        prefsEditor.putString("jobTitle", mJobTitle.getText().toString());
-        prefsEditor.putString("hourlyRate", mHourlyRate.getText().toString());
-        prefsEditor.commit();
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        startStopClock(null);
-    }
-
-    @Override
-    public void onBackPressed() {
-        if(clockRun){
-
-        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("Are you sure?")
-                .setMessage("Exiting the app will stop the clock.")
-                .setPositiveButton("Confirm", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        activity.finish();
-                    }
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
-        }else {
-            finish();
-        }
     }
 
     @Override
