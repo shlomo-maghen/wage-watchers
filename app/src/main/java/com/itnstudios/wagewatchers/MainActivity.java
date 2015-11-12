@@ -124,7 +124,11 @@ public class MainActivity extends Activity {
                 mStartStop.setText("Stop");
                 //hide keyboard
                 InputMethodManager manager = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
-                manager.hideSoftInputFromWindow(v.getWindowToken(), 0);
+                try{
+                    manager.hideSoftInputFromWindow(v.getWindowToken(), 0);
+                }catch(NullPointerException e){
+                    e.printStackTrace();
+                }
             }
         }
     }
