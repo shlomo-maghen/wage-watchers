@@ -31,15 +31,43 @@
         android:id="@+id/bt_start"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
         android:layout_below="@id/et_hourly_rate"
         android:text="@string/start"
         android:onClick="startStopClock"/>
+    <!-- set date/time -->
+    <LinearLayout
+        android:id="@+id/layout_buttons"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/bt_start">
+        <!-- set date-->
+        <Button
+            android:id="@+id/bt_set_date"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/set_date_started"
+            android:enabled="false"
+            android:onClick="setDateStarted"/>
+        <!-- set time-->
+        <Button
+            android:id="@+id/bt_set_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/set_time_started"
+            android:enabled="false"
+            android:onClick="setTimeStarted"/>
+    </LinearLayout>
 
     <TextView
         android:id="@+id/money_clock"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@id/bt_start"
+        android:focusableInTouchMode="true"
+        android:focusable="true"
+        android:layout_below="@id/layout_buttons"
         android:text="@string/start_text"
         android:gravity="center"
         android:textSize="80sp"/>
@@ -54,6 +82,7 @@
             android:layout_height="wrap_content"
             android:gravity="center_horizontal"/>
     </ScrollView>
+
     <com.google.android.gms.ads.AdView
         android:id="@id/adView"
         android:layout_width="wrap_content"

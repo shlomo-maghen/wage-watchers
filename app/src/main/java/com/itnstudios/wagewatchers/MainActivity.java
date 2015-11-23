@@ -1,39 +1,39 @@
 package com.itnstudios.wagewatchers;
 
 import android.app.Activity;
-import android.app.AlertDialog;
+import android.app.DatePickerDialog;
+import android.app.TimePickerDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
+import android.widget.DatePicker;
 import android.widget.EditText;
-import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.widget.TimePicker;
 
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdView;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 
 public class MainActivity extends Activity {
     boolean clockRun = false, mainRun = true;
-    Button mStartStop;
+    Button mStartStop, setDateStartedButton, setTimeStartedButton;
+    Calendar tempTime;
     double hourlyRate;
     EditText mJobTitle, mHourlyRate;
     Handler handler;
     long timeClockStarted;
-    MainActivity activity = this;
-    RelativeLayout mainLayout;
     SharedPreferences.Editor prefsEditor;
     SharedPreferences prefs;
     TextView mMoneyClock, mWorkLog;
@@ -49,6 +49,8 @@ public class MainActivity extends Activity {
         mMoneyClock = (TextView)findViewById(R.id.money_clock);
         mWorkLog = (TextView) findViewById(R.id.tv_log);
         mStartStop = (Button)findViewById(R.id.bt_start);
+        setDateStartedButton = (Button)findViewById(R.id.bt_set_date);
+        setTimeStartedButton = (Button)findViewById(R.id.bt_set_time);
         clockThread = new Thread(new ClockRun());
         prefs = getSharedPreferences("com.itnstudios.mainPrefs", MODE_PRIVATE);
         handler = new Handler(){
@@ -86,13 +88,15 @@ public class MainActivity extends Activity {
 
         if(clockRun)prefsEditor.putLong("timeClockStarted", timeClockStarted);
         else prefsEditor.remove("timeClockStarted");
-        prefsEditor.commit();
+        prefsEditor.apply();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        if (prefs.getLong("timeClockStarted", 0) > 0) startStopClock(null);
+        if (prefs.getLong("timeClockStarted", 0) > 0 && !clockRun) {
+            startStopClock(null);
+        }
     }
 
     public void startStopClock(View v) {
@@ -112,10 +116,14 @@ public class MainActivity extends Activity {
             //reset the clock
             prefsEditor = prefs.edit();
             prefsEditor.remove("timeClockStarted");
-            prefsEditor.commit();
+            prefsEditor.apply();
             mMoneyClock.setText("$0.00");
+            //disable the date/time buttons
+            setDateStartedButton.setEnabled(false);
+            setTimeStartedButton.setEnabled(false);
 
         }else if (!clockRun){
+            tempTime = Calendar.getInstance();
             if (fieldsOk()){
                 hourlyRate = Double.parseDouble(mHourlyRate.getText().toString());
                 //start clock
@@ -130,9 +138,27 @@ public class MainActivity extends Activity {
                     e.printStackTrace();
                 }
             }
+            //enable the date/time buttons
+            setDateStartedButton.setEnabled(true);
+            setTimeStartedButton.setEnabled(true);
+
         }
     }
 
+    public void setTimeStarted(View v){
+        TimePickerDialog timePicker = new TimePickerDialog(this, new TimeSetListener(),
+                tempTime.get(Calendar.HOUR),
+                tempTime.get(Calendar.MINUTE),
+                false);
+        timePicker.show();
+    }
+    public void setDateStarted(View v){
+        DatePickerDialog datePicker = new DatePickerDialog(this, new DateSetListener(),
+                tempTime.get(Calendar.YEAR),
+                tempTime.get(Calendar.MONTH),
+                tempTime.get(Calendar.DAY_OF_MONTH));
+        datePicker.show();
+    }
     private String getWorkRecord(long timeWorked, String realMoneyEarned) {
         StringBuilder builder = new StringBuilder();
         //append date MM/DD/YY
@@ -146,7 +172,7 @@ public class MainActivity extends Activity {
         //append time worked
         long seconds = timeWorked / 1000 % 60;
         long minutes = timeWorked / 60000 % 60;
-        long hours = timeWorked / 360000 % 24;
+        long hours = timeWorked / 3600000 % 24;
         String time = String.format("%02d:%02d:%02d", hours, minutes, seconds);
         builder.append(time+ "//");
         //append amount earned
@@ -156,7 +182,7 @@ public class MainActivity extends Activity {
         builder.append(prefsLog);
         prefsEditor = prefs.edit();
         prefsEditor.putString("workLog", builder.toString());
-        prefsEditor.commit();
+        prefsEditor.apply();
 
         return builder.toString();
     }
@@ -219,5 +245,24 @@ public class MainActivity extends Activity {
             }while (mainRun);
         }
     }
+    class TimeSetListener implements TimePickerDialog.OnTimeSetListener{
+        @Override
+        public void onTimeSet(TimePicker view, int hourOfDay, int minute) {
+            tempTime.set(Calendar.HOUR, hourOfDay);
+            tempTime.set(Calendar.MINUTE, minute);
+            timeClockStarted = tempTime.getTimeInMillis();
+        }
+    }
 
+
+    class DateSetListener implements DatePickerDialog.OnDateSetListener{
+        @Override
+        public void onDateSet(DatePicker view, int year, int monthOfYear, int dayOfMonth) {
+            tempTime.set(Calendar.YEAR, year);
+            tempTime.set(Calendar.MONTH, monthOfYear);
+            tempTime.set(Calendar.DAY_OF_MONTH, dayOfMonth);
+                timeClockStarted = tempTime.getTimeInMillis();
+        }
+
+    }
 }
